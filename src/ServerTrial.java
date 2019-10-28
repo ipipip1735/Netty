@@ -35,7 +35,7 @@ public class ServerTrial {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
-            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.126", 5454));
+            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.127", 5454));
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
@@ -45,9 +45,9 @@ public class ServerTrial {
 
 
 //                    ch.pipeline().addLast(new EmptyHandler());//增加空处理器
-//                    ch.pipeline().addLast(new InboundHandler());//增加读处理器
+                    ch.pipeline().addLast(new InboundHandler());//增加读处理器
 //                    ch.pipeline().addLast(new EmptyHandler(), new InboundHandler());//使用2个处理器
-                    ch.pipeline().addLast(new StringDecoder());//使用框架自带的解码器
+//                    ch.pipeline().addLast(new StringDecoder());//使用框架自带的解码器
 
                 }
             };
@@ -116,7 +116,6 @@ public class ServerTrial {
 //            ctx.writeAndFlush(byteBuf)
 //                    .addListener(ChannelFutureListener.CLOSE);
 
-
 //          channelFuture.channel().close();//关闭服务端（不再服务，任何通道都不会再建立，结束main()方法）
 
 
@@ -146,8 +145,6 @@ public class ServerTrial {
             System.out.println("ctx is " + ctx);
         }
     }
-
-    ;
 
 
     class EmptyHandler extends ChannelInboundHandlerAdapter {
