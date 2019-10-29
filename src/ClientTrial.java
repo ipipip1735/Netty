@@ -37,12 +37,13 @@ public class ClientTrial {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
 //                            ch.pipeline().addLast(new ChannelInboundHandler());
+//                            ch.pipeline().addLast(new OutboundHandler(), new ChannelInboundHandler());
                             ch.pipeline().addLast(new ChannelInboundHandler(), new OutboundHandler());
 //                            ch.pipeline().addLast(new ChannelInboundHandler(), new RequestEncoder());
                         }
                     });
 
-            ChannelFuture channelFuture = bootstrap.connect("192.168.0.126", 5454).sync();
+            ChannelFuture channelFuture = bootstrap.connect("192.168.0.127", 5454).sync();
 
             channelFuture.channel().closeFuture().sync();
 
@@ -68,6 +69,8 @@ public class ClientTrial {
 
         }
     }
+
+
 
 
     class OutboundHandler extends ChannelOutboundHandlerAdapter {
@@ -178,6 +181,7 @@ public class ClientTrial {
             ByteBuf byteBuf = Unpooled.buffer();
             byteBuf.writeCharSequence("rqst", UTF_8);
 
+//            ctx.writeAndFlush(byteBuf)
             ctx.channel().writeAndFlush(byteBuf)
             .addListener(future -> { System.out.println("flushed!"); });
 

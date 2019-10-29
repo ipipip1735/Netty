@@ -35,7 +35,7 @@ public class ServerTrial {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
-            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.126", 5454));
+            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.127", 5454));
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
