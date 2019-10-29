@@ -15,11 +15,30 @@ public class ByteBufTrial {
 
 //        searchIndex();//查询索引
 //        write();//写操作
+//        read();//读操作
 
 //        loop();
-//        rw();
+        reRead();//反复读
 
-        refer();
+//        refer();
+
+    }
+
+    private static void read() {
+
+        ByteBuf byteBuf = Unpooled.buffer();
+        byteBuf.writeBytes("ab".getBytes());
+
+
+        //方式一：逐字节读取
+//        while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+
+        //方式二：以字节数组为单位读取
+        byte[] bytes = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(bytes)
+                .release();
+        for (byte b : bytes) System.out.println(b);
+
 
     }
 
@@ -44,14 +63,14 @@ public class ByteBufTrial {
 
     }
 
-    private static void rw() {
+    private static void reRead() {
         ByteBuf byteBuf = Unpooled.buffer();
         byteBuf.writeInt(1);
         byteBuf.writeInt(25);
 
         System.out.println(byteBuf.readInt());
         System.out.println(byteBuf.readInt());
-        byteBuf.readerIndex(0);
+        byteBuf.readerIndex(0);//读指针归零
         System.out.println(byteBuf.readInt());
         System.out.println(byteBuf.readInt());
 
@@ -75,9 +94,6 @@ public class ByteBufTrial {
 
         //遍历读
         while (byteBuf.isReadable()) System.out.println(byteBuf.readInt());
-
-
-
 
 
     }
