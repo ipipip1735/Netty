@@ -35,7 +35,7 @@ public class ServerTrial {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
-            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.127", 5454));
+            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.126", 5454));
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
@@ -99,14 +99,27 @@ public class ServerTrial {
             System.out.println("msg is " + msg);
 
 
+
+
             ByteBuf byteBuf = (ByteBuf) msg;
-            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
-            byteBuf.release();
 
 
-            String s = "ok";
-            byteBuf = Unpooled.buffer(s.length());
-            for (char c : s.toCharArray()) byteBuf.writeChar(c);
+            //方式一：直接读取字节
+//            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+
+            //方式二：读取字符串
+            byteBuf.readerIndex(0);
+            System.out.println(byteBuf.readableBytes());
+            byte[] bytes = new byte[byteBuf.readableBytes()];
+            byteBuf.readBytes(bytes);
+            System.out.println(new String(bytes));
+
+
+
+
+
+            byteBuf = Unpooled.buffer();
+            byteBuf.writeBytes("ok".getBytes());
 
             //方式一：使用自定义处理器
             ctx.writeAndFlush(byteBuf)
