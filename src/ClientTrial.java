@@ -46,7 +46,6 @@ public class ClientTrial {
             ChannelFuture channelFuture = bootstrap.connect("192.168.0.127", 5454).sync();
 
             channelFuture.channel().closeFuture().sync();
-
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
