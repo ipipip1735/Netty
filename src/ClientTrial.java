@@ -5,10 +5,13 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToByteEncoder;
 
 import java.net.SocketAddress;
+import java.util.List;
 
+import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -38,14 +41,17 @@ public class ClientTrial {
                         public void initChannel(SocketChannel ch) throws Exception {
 //                            ch.pipeline().addLast(new ChannelInboundHandler());
 //                            ch.pipeline().addLast(new OutboundHandler(), new ChannelInboundHandler());
-                            ch.pipeline().addLast(new ChannelInboundHandler(), new OutboundHandler());
+//                            ch.pipeline().addLast(new ChannelInboundHandler(), new OutboundHandler());
 //                            ch.pipeline().addLast(new ChannelInboundHandler(), new RequestEncoder());
+                            ch.pipeline().addLast(new RequestEncoder(), new ResponseDecoder(), new ClientHandler());
                         }
                     });
 
-            ChannelFuture channelFuture = bootstrap.connect("192.168.0.127", 5454).sync();
+            ChannelFuture channelFuture = bootstrap.connect("192.168.0.126", 5454).sync();
 
-            channelFuture.channel().closeFuture().sync();
+            channelFuture.channel().closeFuture()
+                    .addListener(future -> System.out.println("closed!"))
+                    .sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
@@ -55,16 +61,55 @@ public class ClientTrial {
     }
 
 
-    class RequestEncoder extends MessageToByteEncoder<Integer> {
+    class RequestEncoder extends MessageToByteEncoder<String> {
 
         @Override
-        protected void encode(ChannelHandlerContext ctx, Integer msg, ByteBuf out) throws Exception {
-            System.out.println("~~" + getClass().getSimpleName() + ".handlerAdded~~");
+        protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
+            System.out.println("~~" + getClass().getSimpleName() + ".encode~~");
             System.out.println("ctx is " + ctx);
             System.out.println("msg is " + msg);
             System.out.println("out is " + out);
 
-            out.writeInt(11);
+            ByteBuf byteBuf = Unpooled.buffer();
+            byteBuf.writeCharSequence(msg, UTF_8);
+            ctx.write(byteBuf);
+
+        }
+    }
+
+    class ResponseDecoder extends ByteToMessageDecoder {
+
+        @Override
+        protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+            System.out.println("~~" + getClass().getSimpleName() + ".decode~~");
+            System.out.println("ctx is " + ctx);
+            System.out.println("in is " + in);
+            System.out.println("out is " + out);
+
+
+            byte[] bytes = new byte[in.readableBytes()];
+            in.readBytes(bytes);
+            out.add(new String(bytes));
+        }
+    }
+
+
+    class ClientHandler extends ChannelInboundHandlerAdapter {
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + getClass().getSimpleName() + ".channelActive~~");
+            System.out.println("ctx is " + ctx);
+
+            String request = "request";
+            ctx.writeAndFlush(request)
+            .addListener(future -> System.out.println("flushed!"));
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            System.out.println("~~" + getClass().getSimpleName() + ".channelRead~~");
+            System.out.println("ctx is " + ctx);
+            System.out.println("msg is " + msg);
 
         }
     }

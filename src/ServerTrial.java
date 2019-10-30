@@ -35,7 +35,7 @@ public class ServerTrial {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
-            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.127", 5454));
+            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.126", 5454));
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
@@ -115,11 +115,13 @@ public class ServerTrial {
             System.out.println(new String(bytes));
 
 
-
-
-
+            //方式一
             byteBuf = Unpooled.buffer();
             byteBuf.writeBytes("ok".getBytes());
+
+            //方式二
+
+
 
             //方式一：使用自定义处理器
             ctx.writeAndFlush(byteBuf)
