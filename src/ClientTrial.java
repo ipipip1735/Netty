@@ -60,7 +60,10 @@ public class ClientTrial {
 
     }
 
-
+    /**
+     * 编码器
+     * 负责把主处理器写到服务端的对象编码为字节传输给服务端
+     */
     class RequestEncoder extends MessageToByteEncoder<String> {
 
         @Override
@@ -77,6 +80,10 @@ public class ClientTrial {
         }
     }
 
+    /**
+     * 解码器
+     * 负责把服务端发送的字节封装为对象交给主处理器
+     */
     class ResponseDecoder extends ByteToMessageDecoder {
 
         @Override
@@ -88,12 +95,16 @@ public class ClientTrial {
 
 
             byte[] bytes = new byte[in.readableBytes()];
-            in.readBytes(bytes);
-            out.add(new String(bytes));
+            in.readBytes(bytes);//读取服务端写过来的字节
+            out.add(new String(bytes));//字节封装为对象，并保存到容器，后面主控制器将作为参数传递给服务端
         }
     }
 
 
+    /**
+     * 主处理器
+     * 负责发送数据和接收数据
+     */
     class ClientHandler extends ChannelInboundHandlerAdapter {
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -101,7 +112,7 @@ public class ClientTrial {
             System.out.println("ctx is " + ctx);
 
             String request = "request";
-            ctx.writeAndFlush(request)
+            ctx.writeAndFlush(request)//发送数据到服务端
             .addListener(future -> System.out.println("flushed!"));
         }
 
@@ -109,7 +120,7 @@ public class ClientTrial {
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             System.out.println("~~" + getClass().getSimpleName() + ".channelRead~~");
             System.out.println("ctx is " + ctx);
-            System.out.println("msg is " + msg);
+            System.out.println("msg is " + msg);//打印解码器封装的对象
 
         }
     }
