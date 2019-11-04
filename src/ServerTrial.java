@@ -14,6 +14,8 @@ import java.util.List;
  * Created by Administrator on 2019/10/28 17:24.
  */
 public class ServerTrial {
+    String ip = "192.168.0.126";
+    int port = 5454;
 
     ChannelFuture channelFuture;
 
@@ -31,11 +33,12 @@ public class ServerTrial {
 
         EventLoopGroup group = new NioEventLoopGroup();
 
+
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
-            serverBootstrap.localAddress(new InetSocketAddress("192.168.0.126", 5454));
+            serverBootstrap.localAddress(new InetSocketAddress(ip, port));
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
