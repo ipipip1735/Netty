@@ -8,7 +8,9 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by Administrator on 2019/10/28 17:24.
@@ -23,7 +25,108 @@ public class ServerTrial {
 
         ServerTrial nettyTrial = new ServerTrial();
 
-        nettyTrial.server();
+//        nettyTrial.server();//测试基本功能
+        nettyTrial.pipeLine();//测试管线的事件传播
+//        nettyTrial.task();//测试任务队列
+
+
+    }
+
+    private void task() {
+
+
+        EventLoopGroup group = new NioEventLoopGroup();
+        try {
+            ServerBootstrap serverBootstrap = new ServerBootstrap();
+            serverBootstrap.group(group);
+            serverBootstrap.channel(NioServerSocketChannel.class);
+            serverBootstrap.localAddress(new InetSocketAddress(ip, port));
+
+            ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
+                    System.out.println("~~" + getClass().getSimpleName() + ".initChannel~~");
+                    System.out.println("ch is " + ch);
+
+                    ch.pipeline().addLast(new Task("T"));
+                }
+            };
+
+
+            serverBootstrap.childHandler(init)
+                    .option(ChannelOption.SO_BACKLOG, 128)
+                    .childOption(ChannelOption.SO_KEEPALIVE, true);
+
+
+            serverBootstrap.bind()
+                    .channel()
+                    .closeFuture()
+                    .sync();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                group.shutdownGracefully().sync();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+
+    private void pipeLine() {
+
+        EventLoopGroup group = new NioEventLoopGroup();
+        try {
+            ServerBootstrap serverBootstrap = new ServerBootstrap();
+            serverBootstrap.group(group);
+            serverBootstrap.channel(NioServerSocketChannel.class);
+            serverBootstrap.localAddress(new InetSocketAddress(ip, port));
+
+            ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
+                    System.out.println("~~" + getClass().getSimpleName() + ".initChannel~~");
+                    System.out.println("ch is " + ch);
+
+                    //增加5个读处理器
+                    ch.pipeline().addLast(new In("R1"));
+                    ch.pipeline().addLast(new In("R2"));
+                    ch.pipeline().addLast(new In("R3"));
+                    ch.pipeline().addLast(new In("R4"));
+                    ch.pipeline().addLast(new In("R5"));
+
+                    //增加2个写处理器
+                    ch.pipeline().addLast(new Out("W1"),
+                            new Out("W2"),
+                            new Out("W3"));
+                }
+            };
+
+
+            serverBootstrap.childHandler(init)//增加处理器
+                    .option(ChannelOption.SO_BACKLOG, 128)//配置通道
+                    .childOption(ChannelOption.SO_KEEPALIVE, true);
+
+
+            serverBootstrap.bind()
+                    .channel()
+                    .closeFuture()
+                    .sync();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                group.shutdownGracefully().sync();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
 
     }
@@ -102,8 +205,6 @@ public class ServerTrial {
             System.out.println("msg is " + msg);
 
 
-
-
             ByteBuf byteBuf = (ByteBuf) msg;
 
 
@@ -121,9 +222,6 @@ public class ServerTrial {
             //方式一
             byteBuf = Unpooled.buffer();
             byteBuf.writeBytes("ok".getBytes());
-
-            //方式二
-
 
 
             //方式一：使用自定义处理器
@@ -161,6 +259,82 @@ public class ServerTrial {
         public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
             System.out.println("~~" + getClass().getSimpleName() + ".channelReadComplete~~");
             System.out.println("ctx is " + ctx);
+        }
+    }
+
+    class Task extends ChannelInboundHandlerAdapter {
+
+        String name;
+
+        public Task(String name) {
+            this.name = name;
+        }
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            Runnable task = new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println("task");
+                }
+            };
+
+            ctx.channel()//获取通道
+                    .eventLoop()//获取线程
+                    .submit(task);//提交任务到任务队列
+        }
+
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            System.out.println(this.name);
+
+            ctx.channel().eventLoop().schedule(new Runnable() {
+                @Override
+                public void run() {
+                    System.out.println("Task of delay");
+                }
+            }, 2L, TimeUnit.SECONDS);//提交延迟任务，延迟2秒
+
+
+            ctx.fireChannelRead(msg);//传递事件到下个节点
+        }
+
+
+    }
+
+
+    class In extends ChannelInboundHandlerAdapter {
+        String name;
+
+        public In(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            System.out.println(this.name);
+            if (name == "R3") {
+                System.out.println("-------");
+                ByteBuf byteBuf = Unpooled.wrappedBuffer("XXX".getBytes());
+                ctx.pipeline().writeAndFlush(byteBuf);
+            } else {
+                ctx.fireChannelRead(msg);
+            }
+        }
+    }
+
+    class Out extends ChannelOutboundHandlerAdapter {
+        String name;
+
+        public Out(String name) {
+            this.name = name;
+        }
+
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            System.out.println(this.name);
+            ctx.write(msg);
         }
     }
 
