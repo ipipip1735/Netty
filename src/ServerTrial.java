@@ -6,6 +6,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -26,8 +28,55 @@ public class ServerTrial {
         ServerTrial nettyTrial = new ServerTrial();
 
 //        nettyTrial.server();//测试基本功能
-        nettyTrial.pipeLine();//测试管线的事件传播
+//        nettyTrial.pipeLine();//测试管线的事件传播
 //        nettyTrial.task();//测试任务队列
+        nettyTrial.attribute();//测试管线的事件传播
+
+
+    }
+
+    private void attribute() {
+
+        EventLoopGroup group = new NioEventLoopGroup();
+        try {
+            ServerBootstrap serverBootstrap = new ServerBootstrap();
+            serverBootstrap.group(group);
+            serverBootstrap.channel(NioServerSocketChannel.class);
+            serverBootstrap.localAddress(new InetSocketAddress(ip, port));
+
+            ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
+                @Override
+                protected void initChannel(SocketChannel ch) throws Exception {
+                    System.out.println("~~" + getClass().getSimpleName() + ".initChannel~~");
+                    System.out.println("ch is " + ch);
+
+
+                    ch.pipeline().addLast(new Attrbute());
+                }
+            };
+
+
+            serverBootstrap.childHandler(init)//增加处理器
+                    .option(ChannelOption.SO_BACKLOG, 128)//配置通道
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
+                    .childAttr(AttributeKey.valueOf("One"), 111);
+
+
+            serverBootstrap.bind()
+                    .channel()
+                    .closeFuture()
+                    .sync();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                group.shutdownGracefully().sync();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
 
     }
@@ -51,6 +100,7 @@ public class ServerTrial {
                     ch.pipeline().addLast(new Task("T"));
                 }
             };
+
 
 
             serverBootstrap.childHandler(init)
@@ -269,6 +319,7 @@ public class ServerTrial {
         public Task(String name) {
             this.name = name;
         }
+
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             Runnable task = new Runnable() {
@@ -300,6 +351,27 @@ public class ServerTrial {
         }
 
 
+    }
+
+    class Attrbute extends ChannelInboundHandlerAdapter {
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~handlerAdded~~");
+            if (ctx.channel().hasAttr(AttributeKey.valueOf("One"))) {
+                Attribute<Integer> i = ctx.channel().attr(AttributeKey.valueOf("One"));
+                System.out.println(i);
+            }
+        }
+
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            System.out.println("~~channelRead~~");
+            if (ctx.channel().hasAttr(AttributeKey.valueOf("One"))) {
+                Attribute<Integer> i = ctx.channel().attr(AttributeKey.valueOf("One"));
+                System.out.println(i);
+            }
+        }
     }
 
 
