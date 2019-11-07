@@ -27,10 +27,10 @@ public class ServerTrial {
 
         ServerTrial nettyTrial = new ServerTrial();
 
-//        nettyTrial.server();//测试基本功能
+        nettyTrial.server();//测试基本功能
 //        nettyTrial.pipeLine();//测试管线的事件传播
 //        nettyTrial.task();//测试任务队列
-        nettyTrial.attribute();//测试管线的事件传播
+//        nettyTrial.attribute();//测试管线的事件传播
 
 
     }
@@ -200,9 +200,9 @@ public class ServerTrial {
                     System.out.println("ch is " + ch);
 
 
-//                    ch.pipeline().addLast(new EmptyHandler());//增加空处理器
-                    ch.pipeline().addLast(new InboundHandler());//增加读处理器
-//                    ch.pipeline().addLast(new EmptyHandler(), new InboundHandler());//使用2个处理器
+//                    ch.pipeline().addLast(new EmptyHandler());//使用单个空处理器
+                    ch.pipeline().addLast(new InboundHandler());//使用单个读处理器
+//                    ch.pipeline().addLast(new EmptyHandler(), new InboundHandler());//使用2个读处理器
 //                    ch.pipeline().addLast(new StringDecoder());//使用框架自带的解码器
 
                 }
