@@ -84,7 +84,6 @@ public class ByteBufTrial {
         byteBuf.resetReaderIndex();
         while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
 
-
     }
 
     private static void loop() {
