@@ -64,15 +64,26 @@ public class ByteBufTrial {
     }
 
     private static void reRead() {
+
+        //方式一：手动设置读指针
+//        ByteBuf byteBuf = Unpooled.buffer();
+//        byteBuf.writeInt(25);
+//        while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+//
+//        byteBuf.readerIndex(0);
+//        while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+
+
+        //方式二：
         ByteBuf byteBuf = Unpooled.buffer();
-        byteBuf.writeInt(1);
         byteBuf.writeInt(25);
 
-        System.out.println(byteBuf.readInt());
-        System.out.println(byteBuf.readInt());
-        byteBuf.readerIndex(0);//读指针归零
-        System.out.println(byteBuf.readInt());
-        System.out.println(byteBuf.readInt());
+        byteBuf.markReaderIndex();
+        while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+
+        byteBuf.resetReaderIndex();
+        while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+
 
     }
 
