@@ -18,9 +18,9 @@ public class ByteBufTrial {
 //        read();//读操作
 
 //        loop();
-        reRead();//反复读
+//        reRead();//反复读
 
-//        refer();
+        refer();
 
     }
 
@@ -56,10 +56,14 @@ public class ByteBufTrial {
 
     private static void refer() {
 
-        ByteBuf byteBuf = Unpooled.buffer();
-        System.out.println(byteBuf.refCnt());
-        byteBuf.release();
-        System.out.println(byteBuf.refCnt());
+
+        ByteBuf byteBuf = Unpooled.buffer();//Unpooled内部有个缓存池，引用为0的ByteBuf才能被重用
+        System.out.println(byteBuf.refCnt());//打印引用数
+//        byteBuf.release();//释放，引用-1K
+        byteBuf.retain();//持有，引用+1
+        System.out.println(byteBuf.refCnt());//打印引用数
+
+
 
     }
 
