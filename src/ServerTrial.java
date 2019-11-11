@@ -6,6 +6,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 
@@ -27,11 +28,53 @@ public class ServerTrial {
 
         ServerTrial nettyTrial = new ServerTrial();
 
-        nettyTrial.server();//测试基本功能
+//        nettyTrial.server();//测试基本功能
 //        nettyTrial.pipeLine();//测试管线的事件传播
 //        nettyTrial.task();//测试任务队列
 //        nettyTrial.attribute();//测试管线的事件传播
 
+        nettyTrial.codecs();//测试基本功能
+
+
+    }
+
+    private void codecs() {
+
+        EventLoopGroup group = new NioEventLoopGroup();
+
+        ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
+            @Override
+            protected void initChannel(SocketChannel ch) throws Exception {
+
+                ByteBuf delimiter = Unpooled.wrappedBuffer("o".getBytes());
+                ch.pipeline().addLast(
+                        new DelimiterBasedFrameDecoder(1024, delimiter),
+                        new InboundHandler());
+            }
+        };
+
+        try {
+            new ServerBootstrap()
+                    .group(group)
+                    .channel(NioServerSocketChannel.class)
+                    .localAddress(new InetSocketAddress(ip, port))
+                    .childHandler(init)
+                    .bind()
+                    .channel()
+                    .closeFuture()
+                    .sync();
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                group.shutdownGracefully().sync();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
     }
 
@@ -100,7 +143,6 @@ public class ServerTrial {
                     ch.pipeline().addLast(new Task("T"));
                 }
             };
-
 
 
             serverBootstrap.childHandler(init)
@@ -186,7 +228,6 @@ public class ServerTrial {
 
         EventLoopGroup group = new NioEventLoopGroup();
 
-
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(group);
@@ -259,24 +300,24 @@ public class ServerTrial {
 
 
             //方式一：直接读取字节
-//            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
 
             //方式二：读取字符串
-            byteBuf.readerIndex(0);
-            System.out.println(byteBuf.readableBytes());
-            byte[] bytes = new byte[byteBuf.readableBytes()];
-            byteBuf.readBytes(bytes);
-            System.out.println(new String(bytes));
+//            byteBuf.readerIndex(0);
+//            System.out.println(byteBuf.readableBytes());
+//            byte[] bytes = new byte[byteBuf.readableBytes()];
+//            byteBuf.readBytes(bytes);
+//            System.out.println(new String(bytes));
 
 
-            //方式一
-            byteBuf = Unpooled.buffer();
-            byteBuf.writeBytes("ok".getBytes());
+            //方式一：写数据
+//            byteBuf = Unpooled.buffer();
+//            byteBuf.writeBytes("ok".getBytes());
 
 
             //方式一：使用自定义处理器
-            ctx.writeAndFlush(byteBuf)
-                    .addListener(future -> ctx.close());//增加监听器，flush()操作后关闭通道
+//            ctx.writeAndFlush(byteBuf)
+//                    .addListener(future -> ctx.close());//增加监听器，flush()操作后关闭通道
 
             //方式二：使用框架自带处理器
 //            ctx.writeAndFlush(byteBuf)
