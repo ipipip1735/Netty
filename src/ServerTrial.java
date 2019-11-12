@@ -45,7 +45,7 @@ public class ServerTrial {
         ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
             @Override
             protected void initChannel(SocketChannel ch) throws Exception {
-
+                System.out.println("~~initChannel~~");
                 ByteBuf delimiter = Unpooled.wrappedBuffer("o".getBytes());
                 ch.pipeline().addLast(
                         new DelimiterBasedFrameDecoder(1024, delimiter),
