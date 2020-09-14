@@ -1,6 +1,7 @@
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledDirectByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -9,11 +10,17 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
+import jdk.swing.interop.SwingInterOpUtils;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static io.netty.util.CharsetUtil.UTF_8;
 
 /**
  * Created by Administrator on 2019/10/28 17:24.
@@ -28,12 +35,12 @@ public class ServerTrial {
 
         ServerTrial nettyTrial = new ServerTrial();
 
-//        nettyTrial.server();//测试基本功能
+        nettyTrial.server();//测试基本功能
 //        nettyTrial.pipeLine();//测试管线的事件传播
 //        nettyTrial.task();//测试任务队列
 //        nettyTrial.attribute();//测试管线的事件传播
 
-        nettyTrial.codecs();//测试基本功能
+//        nettyTrial.codecs();//测试基本功能
 
 
     }
@@ -140,10 +147,16 @@ public class ServerTrial {
                     System.out.println("~~" + getClass().getSimpleName() + ".initChannel~~");
                     System.out.println("ch is " + ch);
 
-                    ch.pipeline().addLast(new Task("T"));
+                    ch.eventLoop().submit(() -> System.out.println("Task One"));
+
+                    ch.eventLoop().schedule(() -> System.out.println("Task Two"), 2L, TimeUnit.SECONDS)
+                    .addListener(future -> {
+                        System.out.println(future.isSuccess());
+                    });
+
+
                 }
             };
-
 
             serverBootstrap.childHandler(init)
                     .option(ChannelOption.SO_BACKLOG, 128)
@@ -233,6 +246,7 @@ public class ServerTrial {
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
             serverBootstrap.localAddress(new InetSocketAddress(ip, port));
+//            serverBootstrap.handler(new EmptyHandlerIn("xxx"));//仅在接受请求时调用一次
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
@@ -241,9 +255,16 @@ public class ServerTrial {
                     System.out.println("ch is " + ch);
 
 
-//                    ch.pipeline().addLast(new EmptyHandler());//使用单个空处理器
-                    ch.pipeline().addLast(new InboundHandler());//使用单个读处理器
-//                    ch.pipeline().addLast(new EmptyHandler(), new InboundHandler());//使用2个读处理器
+                    ch.pipeline().addLast(new EmptyHandlerIn("R1"))
+                            .addLast(new EmptyHandlerIn("R2"))
+                            .addLast(new EmptyHandlerIn("R3"));
+//                    ch.pipeline().addLast(new EmptyHandlerOut("W1"))
+//                            .addLast(new EmptyHandlerOut("W2"))
+//                            .addLast(new EmptyHandlerOut("W3"))
+//                            .addLast(new EmptyHandlerOut("W4"));
+
+
+//                    ch.pipeline().addLast(new InboundHandler());//使用单个读处理器
 //                    ch.pipeline().addLast(new StringDecoder());//使用框架自带的解码器
 
                 }
@@ -251,10 +272,11 @@ public class ServerTrial {
 
             serverBootstrap.childHandler(init)
                     .option(ChannelOption.SO_BACKLOG, 128)
-                    .childOption(ChannelOption.SO_KEEPALIVE, true);
-
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
+                    .childOption(ChannelOption.AUTO_READ, true);
 
             channelFuture = serverBootstrap.bind().sync();
+
             channelFuture.channel()
                     .closeFuture()
                     .sync();
@@ -296,11 +318,9 @@ public class ServerTrial {
             System.out.println("msg is " + msg);
 
 
-            ByteBuf byteBuf = (ByteBuf) msg;
-
 
             //方式一：直接读取字节
-            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
+//            while (byteBuf.isReadable()) System.out.println(byteBuf.readByte());
 
             //方式二：读取字符串
 //            byteBuf.readerIndex(0);
@@ -310,20 +330,16 @@ public class ServerTrial {
 //            System.out.println(new String(bytes));
 
 
-            //方式一：写数据
-//            byteBuf = Unpooled.buffer();
-//            byteBuf.writeBytes("ok".getBytes());
 
 
-            //方式一：使用自定义处理器
-//            ctx.writeAndFlush(byteBuf)
-//                    .addListener(future -> ctx.close());//增加监听器，flush()操作后关闭通道
+            //方式一：使用自定义处理器发送数据
+            ByteBuf byteBuf = Unpooled.buffer();
+            byteBuf.writeBytes("ok".getBytes());
+            ctx.writeAndFlush(byteBuf)
+                    .addListener(future -> ctx.close());//增加监听器，flush()操作后关闭通道
+//                    .addListener(ChannelFutureListener.CLOSE);//增加系统自带监听器
 
-            //方式二：使用框架自带处理器
-//            ctx.writeAndFlush(byteBuf)
-//                    .addListener(ChannelFutureListener.CLOSE);
-
-//          channelFuture.channel().close();//关闭服务端（不再服务，任何通道都不会再建立，结束main()方法）
+          channelFuture.channel().close();//关闭服务端（不再服务，任何通道都不会再建立，结束main()方法）
 
 
         }
@@ -351,47 +367,6 @@ public class ServerTrial {
             System.out.println("~~" + getClass().getSimpleName() + ".channelReadComplete~~");
             System.out.println("ctx is " + ctx);
         }
-    }
-
-    class Task extends ChannelInboundHandlerAdapter {
-
-        String name;
-
-        public Task(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            Runnable task = new Runnable() {
-                @Override
-                public void run() {
-                    System.out.println("task");
-                }
-            };
-
-            ctx.channel()//获取通道
-                    .eventLoop()//获取线程
-                    .submit(task);//提交任务到任务队列
-        }
-
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            System.out.println(this.name);
-
-            ctx.channel().eventLoop().schedule(new Runnable() {
-                @Override
-                public void run() {
-                    System.out.println("Task of delay");
-                }
-            }, 2L, TimeUnit.SECONDS);//提交延迟任务，延迟2秒
-
-
-            ctx.fireChannelRead(msg);//传递事件到下个节点
-        }
-
-
     }
 
     class Attrbute extends ChannelInboundHandlerAdapter {
@@ -451,58 +426,201 @@ public class ServerTrial {
         }
     }
 
+    class EmptyHandlerOut extends ChannelOutboundHandlerAdapter {
+        String name;
 
-    class EmptyHandler extends ChannelInboundHandlerAdapter {
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".handlerAdded~~");
-            System.out.println("ctx is " + ctx);
-
+        public EmptyHandlerOut(String name) {
+            this.name = name;
         }
 
         @Override
-        public void handlerRemoved(ChannelHandlerContext ctx) {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".handlerRemoved~~");
-            System.out.println("ctx is " + ctx);
+        public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".bind~~");
+            super.bind(ctx, localAddress, promise);
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".channelRead~~");
+        public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".connect~~");
+            super.connect(ctx, remoteAddress, localAddress, promise);
+        }
+
+        @Override
+        public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".disconnect~~");
+            super.disconnect(ctx, promise);
+        }
+
+        @Override
+        public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".close~~");
+            super.close(ctx, promise);
+        }
+
+        @Override
+        public void deregister(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".deregister~~");
+            super.deregister(ctx, promise);
+        }
+
+        @Override
+        public void read(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".read~~");
+            super.read(ctx);
+        }
+
+        @Override
+        public void flush(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".flush~~");
+            super.flush(ctx);
+        }
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerAdded~~");
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerRemoved~~");
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".write~~");
+            System.out.println("ctx is " + ctx);
+            System.out.println("msg is " + msg);
+
+//            if (name.equals("W3")) {
+//                ByteBuf byteBuf = (ByteBuf) msg;
+//                ctx.flush();
+////                System.out.println("W3");
+//            } else {
+//                super.write(ctx, msg, promise);
+//            }
+
+
+            ByteBuf byteBuf = (ByteBuf) msg;
+            ((ByteBuf) msg).writeBytes(UTF_8.encode(name));
+            super.write(ctx, msg, promise);
+        }
+    }
+
+
+    class EmptyHandlerIn extends ChannelInboundHandlerAdapter {
+
+        String name;
+
+        public EmptyHandlerIn(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerAdded~~");
+//            System.out.println("ctx is " + ctx);
+
+            super.handlerAdded(ctx);
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerRemoved~~");
+//            System.out.println("ctx is " + ctx);
+
+
+            super.handlerRemoved(ctx);
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelRead~~");
             System.out.println("ctx is " + ctx);
             System.out.println("msg is " + msg);
 
 
-            ctx.fireChannelRead(msg);
+            //读数据
+//            ByteBuf byteBuf = (ByteBuf) msg;
+//            System.out.println(byteBuf.readByte());//逐字节读取（每个处理器仅处理一个字符）
+//            super.channelRead(ctx, msg);
+
+
+            //写数据
+            if (name.equals("R3")) {
+
+                //方式一：获取客户端通道，并发送数据
+//                ByteBuf byteBuf = Unpooled.directBuffer();
+//                byteBuf.writeBytes(UTF_8.encode("OK"));
+//                ctx.channel()
+//                        .writeAndFlush(byteBuf)
+//                        .addListener(new ChannelFutureListener() {
+//                            @Override
+//                            public void operationComplete(ChannelFuture future) throws Exception {
+//                                System.out.println("flush!");
+//                            }
+//                        });
+
+                //方式二：把待发送的数据交给管线处理
+                ctx.pipeline()//和ctx.channel()是等价的，通道写操作就是调用管线写操作
+                        .writeAndFlush(Unpooled.directBuffer().writeBytes(UTF_8.encode("OK")))
+                        .addListener(ChannelFutureListener.CLOSE);
+
+
+            } else {
+                super.channelRead(ctx, msg);
+            }
+
+        }
+
+        @Override
+        public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelReadComplete~~");
+//            System.out.println("ctx is " + ctx);
+
+            super.channelReadComplete(ctx);
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".channelActive~~");
-            System.out.println("ctx is " + ctx);
-
-            ctx.fireChannelActive();
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelActive~~");
+            super.channelActive(ctx);
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".channelInactive~~");
-            System.out.println("ctx is " + ctx);
-
-            ctx.fireChannelInactive();
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelInactive~~");
+            super.channelInactive(ctx);
         }
 
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            System.out.println("~~empty|" + getClass().getSimpleName() + ".exceptionCaught~~");
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".exceptionCaught~~");
+            super.exceptionCaught(ctx, cause);
         }
 
         @Override
-        public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-            System.out.println("ctx is " + ctx);
+        public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelRegistered~~");
+            super.channelRegistered(ctx);
+        }
 
-            ctx.fireChannelReadComplete();
+        @Override
+        public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelUnregistered~~");
+            super.channelUnregistered(ctx);
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".userEventTriggered~~");
+            super.userEventTriggered(ctx, evt);
+        }
+
+        @Override
+        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".channelWritabilityChanged~~");
+            super.channelWritabilityChanged(ctx);
         }
     }
 
