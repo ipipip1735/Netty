@@ -246,7 +246,7 @@ public class ServerTrial {
             serverBootstrap.group(group);
             serverBootstrap.channel(NioServerSocketChannel.class);
             serverBootstrap.localAddress(new InetSocketAddress(ip, port));
-//            serverBootstrap.handler(new EmptyHandlerIn("xxx"));//仅在接受请求时调用一次
+            serverBootstrap.handler(new ServerOut("Server"));//配置服务端处理器（仅在接受请求时调用一次）
 
             ChannelInitializer<SocketChannel> init = new ChannelInitializer<>() {
                 @Override
@@ -258,10 +258,10 @@ public class ServerTrial {
                     ch.pipeline().addLast(new EmptyHandlerIn("R1"))
                             .addLast(new EmptyHandlerIn("R2"))
                             .addLast(new EmptyHandlerIn("R3"));
-//                    ch.pipeline().addLast(new EmptyHandlerOut("W1"))
-//                            .addLast(new EmptyHandlerOut("W2"))
-//                            .addLast(new EmptyHandlerOut("W3"))
-//                            .addLast(new EmptyHandlerOut("W4"));
+                    ch.pipeline().addLast(new EmptyHandlerOut("W1"))
+                            .addLast(new EmptyHandlerOut("W2"))
+                            .addLast(new EmptyHandlerOut("W3"))
+                            .addLast(new EmptyHandlerOut("W4"));
 
 
 //                    ch.pipeline().addLast(new InboundHandler());//使用单个读处理器
@@ -436,6 +436,7 @@ public class ServerTrial {
         @Override
         public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception {
             System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".bind~~");
+            System.out.println("localAddress is " + localAddress);
             super.bind(ctx, localAddress, promise);
         }
 
@@ -645,6 +646,73 @@ public class ServerTrial {
             }
             out.add(in.readBytes(3));
 
+        }
+    }
+
+    class ServerOut extends ChannelOutboundHandlerAdapter {
+        String name;
+
+        public ServerOut(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void bind(ChannelHandlerContext ctx, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".bind~~");
+            System.out.println("localAddress is " + localAddress);
+            super.bind(ctx, localAddress, promise);
+        }
+
+        @Override
+        public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".connect~~");
+            super.connect(ctx, remoteAddress, localAddress, promise);
+        }
+
+        @Override
+        public void disconnect(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".disconnect~~");
+            super.disconnect(ctx, promise);
+        }
+
+        @Override
+        public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".close~~");
+            super.close(ctx, promise);
+        }
+
+        @Override
+        public void deregister(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".deregister~~");
+            super.deregister(ctx, promise);
+        }
+
+        @Override
+        public void read(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".read~~");
+            super.read(ctx);
+        }
+
+        @Override
+        public void flush(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".flush~~");
+            super.flush(ctx);
+        }
+
+        @Override
+        public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerAdded~~");
+        }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".handlerRemoved~~");
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            System.out.println("~~" + name + "|" + getClass().getSimpleName() + ".write~~");
+            super.write(ctx, msg, promise);
         }
     }
 
